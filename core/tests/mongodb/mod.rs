@@ -12,8 +12,6 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
 };
 
-use crate::docker::RunningContainer;
-
 mod common;
 
 async fn test_mongodb_datetime_types(port: u16) {
@@ -940,10 +938,12 @@ async fn start_container(manager: &mut ContainerManager) {
 #[rstest]
 #[test_log::test(tokio::test)]
 async fn test_mongodb_arrow_oneway() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
-    let port = container_manager.port;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_container(container_manager).await;
+        container_manager.port
+    };
 
     test_mongodb_datetime_types(port).await;
     test_mongodb_numeric_types(port).await;

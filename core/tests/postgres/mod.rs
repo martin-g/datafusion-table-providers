@@ -114,7 +114,10 @@ fn global_setup() {
 
 #[dtor(unsafe)]
 fn global_teardown() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+    let mut guard = match CONTAINER_MANAGER_INSTANCE.lock() {
+        Ok(guard) => guard,
+        Err(e) => e.into_inner(),
+    };
     if let Some(container_manager) = guard.take() {
         drop(container_manager);
     }
@@ -168,20 +171,23 @@ async fn test_arrow_postgres_roundtrip(
 #[rstest]
 #[test_log::test(tokio::test)]
 async fn test_arrow_postgres_one_way() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_container(container_manager).await;
+        container_manager.port
+    };
 
-    test_postgres_enum_type(container_manager.port).await;
-    test_postgres_numeric_type(container_manager.port).await;
-    test_postgres_numeric_array_type(container_manager.port).await;
-    test_postgres_jsonb_type(container_manager.port).await;
-    test_postgres_json_type(container_manager.port).await;
-    test_postgres_jsonb_list_struct_with_projected_schema(container_manager.port).await;
-    test_postgres_json_list_struct_with_projected_schema(container_manager.port).await;
-    test_postgres_composite_array_list_struct(container_manager.port).await;
-    test_postgres_sort_limit(container_manager.port).await;
-    test_postgres_unconstrained_numeric_precision(container_manager.port).await;
+    test_postgres_enum_type(port).await;
+    test_postgres_numeric_type(port).await;
+    test_postgres_numeric_array_type(port).await;
+    test_postgres_jsonb_type(port).await;
+    test_postgres_json_type(port).await;
+    test_postgres_jsonb_list_struct_with_projected_schema(port).await;
+    test_postgres_json_list_struct_with_projected_schema(port).await;
+    test_postgres_composite_array_list_struct(port).await;
+    test_postgres_sort_limit(port).await;
+    test_postgres_unconstrained_numeric_precision(port).await;
 }
 
 /// An unconstrained `numeric` column (what `max()`, `avg()` and arithmetic over `numeric`
@@ -851,11 +857,14 @@ async fn test_postgres_json_list_struct_with_projected_schema(port: u16) {
 #[rstest]
 #[test_log::test(tokio::test)]
 async fn test_password_provider_pool() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_container(container_manager).await;
+        container_manager.port
+    };
 
-    let pool = common::get_postgres_pool_with_password_provider(container_manager.port)
+    let pool = common::get_postgres_pool_with_password_provider(port)
         .await
         .expect("Pool with password provider should be created");
 
@@ -997,9 +1006,12 @@ async fn query_postgres_one_way(
 #[rstest]
 #[test_log::test(tokio::test)]
 async fn test_postgres_io_runtime_segregation() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_container(container_manager).await;
+        container_manager.port
+    };
 
     // Create a separate IO runtime
     let io_runtime = tokio::runtime::Builder::new_multi_thread()
@@ -1008,7 +1020,7 @@ async fn test_postgres_io_runtime_segregation() {
         .build()
         .expect("IO runtime should be created");
 
-    let pool = common::get_postgres_connection_pool(container_manager.port)
+    let pool = common::get_postgres_connection_pool(port)
         .await
         .expect("pool created")
         .with_io_runtime(io_runtime.handle().clone());

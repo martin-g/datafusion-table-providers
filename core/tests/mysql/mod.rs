@@ -804,17 +804,14 @@ async fn test_arrow_mysql_roundtrip(
     #[case] arrow_result: (RecordBatch, SchemaRef),
     #[case] table_name: &str,
 ) {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_mysql_container(container_manager).await;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_mysql_container(container_manager).await;
+        container_manager.port
+    };
 
-    arrow_mysql_round_trip(
-        container_manager.port,
-        arrow_result.0,
-        arrow_result.1,
-        table_name,
-    )
-    .await;
+    arrow_mysql_round_trip(port, arrow_result.0, arrow_result.1, table_name).await;
 }
 
 /// When SqlTable is created with new_with_schema, the projected schema may
@@ -988,10 +985,12 @@ async fn test_mysql_sort_limit(port: u16) {
 #[rstest]
 #[test_log::test(tokio::test)]
 async fn test_mysql_arrow_oneway() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_mysql_container(container_manager).await;
-    let port = container_manager.port;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_mysql_container(container_manager).await;
+        container_manager.port
+    };
 
     test_mysql_timestamp_types(port).await;
     test_mysql_datetime_types(port).await;

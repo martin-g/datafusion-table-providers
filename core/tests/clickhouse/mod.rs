@@ -119,12 +119,15 @@ async fn start_container(manager: &mut ContainerManager) {
 /// inserts data into clickhouse using official client and reads it back for now
 #[tokio::test]
 async fn clickhouse_insert_and_read() {
-    let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
-    let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
+    let port = {
+        let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
+        let container_manager = guard.as_mut().unwrap();
+        start_container(container_manager).await;
+        container_manager.port
+    };
 
     let table_name = "test_table";
-    let pool = ClickHouseConnectionPool::new(get_clickhouse_params(container_manager.port))
+    let pool = ClickHouseConnectionPool::new(get_clickhouse_params(port))
         .await
         .unwrap();
 
