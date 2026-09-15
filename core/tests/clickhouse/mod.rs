@@ -92,14 +92,12 @@ static CONTAINER_MANAGER_INSTANCE: Mutex<Option<ContainerManager>> = Mutex::new(
 
 #[ctor(unsafe)]
 fn global_setup() {
-    tracing::info!("Global setup");
     let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
     *guard = Some(ContainerManager::default());
 }
 
 #[dtor(unsafe)]
 fn global_teardown() {
-    tracing::info!("Global teardown");
     let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
     if let Some(container_manager) = guard.take() {
         drop(container_manager);
