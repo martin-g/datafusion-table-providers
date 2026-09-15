@@ -46,7 +46,7 @@ Existing examples continue to use the facade crate and its feature flags.
 During development, and especially before opening a PR, it is recommended to run:
 
 ```bash
-cargo check --all-features --all
+cargo check --all-features --workspace
 ```
 
 This verifies that all features and all crates compile without building
