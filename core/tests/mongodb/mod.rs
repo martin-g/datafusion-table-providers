@@ -917,10 +917,9 @@ fn global_setup() {
 
 #[dtor(unsafe)]
 fn global_teardown() {
-    let mut guard = match CONTAINER_MANAGER_INSTANCE.lock() {
-        Ok(guard) => guard,
-        Err(e) => e.into_inner(),
-    };
+    let mut guard = CONTAINER_MANAGER_INSTANCE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     if let Some(container_manager) = guard.take() {
         drop(container_manager);
     }
