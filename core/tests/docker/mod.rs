@@ -5,7 +5,7 @@ use bollard::{
     },
     query_parameters::{
         CreateContainerOptionsBuilder, CreateImageOptionsBuilder, InspectContainerOptions,
-        ListContainersOptions, ListImagesOptions, RemoveContainerOptionsBuilder,
+        ListContainersOptionsBuilder, ListImagesOptions, RemoveContainerOptionsBuilder,
         StartContainerOptions, StopContainerOptions,
     },
     Docker,
@@ -129,7 +129,7 @@ pub struct ContainerRunner<'a> {
 
 impl ContainerRunner<'_> {
     pub async fn run(self) -> Result<RunningContainer, anyhow::Error> {
-        if self.is_container_running().await? {
+        if self.does_container_exists().await? {
             remove(&self.docker, &self.name).await?;
         }
 
@@ -253,10 +253,12 @@ impl ContainerRunner<'_> {
         Ok(())
     }
 
-    async fn is_container_running(&self) -> Result<bool, anyhow::Error> {
+    async fn does_container_exists(&self) -> Result<bool, anyhow::Error> {
         let containers = self
             .docker
-            .list_containers(Option::<ListContainersOptions>::None)
+            .list_containers(Some(
+                ListContainersOptionsBuilder::default().all(true).build(),
+            ))
             .await?;
         for container in containers {
             let Some(names) = container.names else {
@@ -266,7 +268,7 @@ impl ContainerRunner<'_> {
                 tracing::debug!("Docker container: {n}");
                 n == &self.name || n == &format!("/{}", self.name)
             }) {
-                tracing::debug!("Docker container {} already running", self.name);
+                tracing::debug!("Docker container {} already exists", self.name);
                 return Ok(true);
             }
         }
