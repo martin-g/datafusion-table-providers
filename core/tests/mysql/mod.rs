@@ -772,15 +772,6 @@ fn global_teardown() {
         drop(container_manager);
     }
 }
-async fn start_mysql_container(manager: &mut ContainerManager) {
-    if !manager.claimed {
-        manager.claimed = true;
-        let running_container = common::start_mysql_docker_container(manager.port)
-            .await
-            .expect("MySQL container to start");
-        manager.running_container = Some(running_container);
-    }
-}
 
 #[rstest]
 #[case::binary(get_arrow_binary_record_batch(), "binary")]
@@ -809,7 +800,9 @@ async fn test_arrow_mysql_roundtrip(
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_mysql_container(container_manager).await;
+        container_manager
+            .start_container(common::start_mysql_docker_container)
+            .await;
         container_manager.port
     };
 
@@ -990,7 +983,9 @@ async fn test_mysql_arrow_oneway() {
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_mysql_container(container_manager).await;
+        container_manager
+            .start_container(common::start_mysql_docker_container)
+            .await;
         container_manager.port
     };
 

@@ -12,6 +12,7 @@ use bollard::{
 };
 use futures::StreamExt;
 use std::fmt::Debug;
+use std::future::Future;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 pub struct RunningContainer {
@@ -281,6 +282,24 @@ pub struct ContainerManager {
     pub port: u16,
     pub claimed: bool,
     pub running_container: Option<RunningContainer>,
+}
+
+impl ContainerManager {
+    pub async fn start_container<F, Fut>(&mut self, container_factory: F)
+    where
+        F: Fn(u16) -> Fut,
+        Fut: Future<Output = Result<RunningContainer, anyhow::Error>> + Send + 'static,
+    {
+        if !self.claimed {
+            self.claimed = true;
+            let running_container = container_factory(self.port)
+                .await
+                .expect("Docker container to start");
+
+            tracing::info!("Container {:?} started", &running_container);
+            self.running_container = Some(running_container);
+        }
+    }
 }
 
 impl Drop for ContainerManager {

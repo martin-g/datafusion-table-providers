@@ -106,25 +106,15 @@ fn global_teardown() {
     }
 }
 
-async fn start_container(manager: &mut ContainerManager) {
-    if !manager.claimed {
-        manager.claimed = true;
-        let running_container = common::start_clickhouse_docker_container(manager.port)
-            .await
-            .expect("Postgres container to start");
-
-        tracing::info!("Container {:?} started", &running_container);
-        manager.running_container = Some(running_container);
-    }
-}
-
 /// inserts data into clickhouse using official client and reads it back for now
 #[tokio::test]
 async fn clickhouse_insert_and_read() {
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_container(container_manager).await;
+        container_manager
+            .start_container(common::start_clickhouse_docker_container)
+            .await;
         container_manager.port
     };
 

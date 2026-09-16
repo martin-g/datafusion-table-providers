@@ -122,18 +122,6 @@ fn global_teardown() {
     }
 }
 
-async fn start_container(manager: &mut ContainerManager) {
-    if !manager.claimed {
-        manager.claimed = true;
-        let running_container = common::start_postgres_docker_container(manager.port)
-            .await
-            .expect("Postgres container to start");
-
-        tracing::info!("Container {:?} started", &running_container);
-        manager.running_container = Some(running_container);
-    }
-}
-
 #[rstest]
 #[case::binary(get_arrow_binary_record_batch(), "binary")]
 #[case::int(get_arrow_int_record_batch(), "int")]
@@ -156,7 +144,9 @@ async fn test_arrow_postgres_roundtrip(
 ) {
     let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
     let container_manager = guard.as_mut().unwrap();
-    start_container(container_manager).await;
+    container_manager
+        .start_container(common::start_postgres_docker_container)
+        .await;
 
     arrow_postgres_round_trip(
         container_manager.port,
@@ -173,7 +163,9 @@ async fn test_arrow_postgres_one_way() {
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_container(container_manager).await;
+        container_manager
+            .start_container(common::start_postgres_docker_container)
+            .await;
         container_manager.port
     };
 
@@ -859,7 +851,9 @@ async fn test_password_provider_pool() {
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_container(container_manager).await;
+        container_manager
+            .start_container(common::start_postgres_docker_container)
+            .await;
         container_manager.port
     };
 
@@ -1008,7 +1002,9 @@ async fn test_postgres_io_runtime_segregation() {
     let port = {
         let mut guard = CONTAINER_MANAGER_INSTANCE.lock().unwrap();
         let container_manager = guard.as_mut().unwrap();
-        start_container(container_manager).await;
+        container_manager
+            .start_container(common::start_postgres_docker_container)
+            .await;
         container_manager.port
     };
 
